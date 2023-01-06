@@ -1,0 +1,350 @@
+---
+title: "Experiment 1"
+output: html_notebook
+---
+# Download the packages
+```{r}
+library(ggplot2)
+library(plyr)
+library(tidyverse)
+library(tidybayes)
+library(reshape2) 
+library(rlang)
+library(readxl)
+library(Hmisc)
+library(brms)
+library(tidyr)
+library(readxl)
+library(faux)
+```
+
+# Set the working directory
+
+```{r}
+setwd("/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony")
+```
+
+# Data
+
+```{r}
+Exp1PP = read_excel('/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony/EXP1PP.xlsx')
+Exp1VP = read_excel('/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony/EXP1VP.xlsx')
+Exp1PPHarmony<-subset(Exp1PP,select=c("Subject","Condition","PPHarmony","PPItem","Population"))
+Exp1Noun<-subset(Exp1VP,select=c("Subject","Condition","NounItem","NounAccuracy","Population"))
+Exp1Verb<-subset(Exp1VP,select=c("Subject","Condition","VerbItem","VerbAccuracy","Population"))
+Exp1VPVocabularyAccuracy<-subset(Exp1VP,select=c("Subject","Condition","VPProductionItem","VPProductionAccuracy","Population"))
+Exp1VPOrder<-subset(Exp1VP,select=c("Subject","Condition","VPProductionItem","VPOrderAccuracy","Population"))
+Exp1VPMatching<-subset(Exp1VP,select=c("Subject","Condition","VPMatchingItem","VPMatchingAccuracy","Population"))
+Exp1Adp<-subset(Exp1VP,select=c("Subject","Condition","AdpItem","AdpAccuracy","Population"))
+Exp1PPHarmony<-na.omit(Exp1PPHarmony)
+Exp1LanExp<-subset(Exp1PP,select=c("Subject","Condition","PPHarmony","PPItem","Population","LanExp"))
+Exp1LanExp_En<-subset(Exp1LanExp, Population=="English")
+Exp1LanExp_En<-na.omit(Exp1LanExp_En)
+Exp1LanExp_Ma<-subset(Exp1LanExp, Population=="Mandarin")
+Exp1LanExp_Ma<-na.omit(Exp1LanExp_Ma)
+```
+
+# 1. Plotting
+
+## 1.1 Proportion harmonic responses
+
+```{r}
+Exp1MeanHar=ddply(Exp1PPHarmony,c("Population","Subject","Condition"),summarise, Harmony=mean(PPHarmony,na.rm=TRUE))
+Exp1MeanHar$Population<-factor(Exp1MeanHar$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1MeanHar$Condition<-factor(Exp1MeanHar$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+myplot<-function(mydata,x,y,myylabel,myxlabel){
+  ggplot(mydata, aes(x={{x}}, y={{y}}, fill={{x}})) + 
+      geom_dotplot(binaxis = "y", stackdir = "center", position = "dodge", 
+                   stackratio = 1, binwidth = 0.004, dotsize=7
+                   ) +
+      stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width=.1, size=0.6) +
+      stat_summary(fun = mean, geom = "point", size=3) +
+      facet_grid(.~Condition, scale="free_x", space="free") +
+      scale_fill_manual(values=c("red3", "rosybrown1")) +     
+      theme(legend.position="none") +
+      theme(axis.title.x = element_text(vjust = 0),axis.title.y = element_text(vjust = 0.8)) +
+        theme(axis.title.x = element_text(size=18),axis.text.x = element_text(size=16), 
+              axis.title.y = element_text(size=18), axis.text.y=element_text(size=16), strip.text.x = element_text(size = 16)) +
+      geom_hline(aes(yintercept=.5),linetype="dashed")+  
+    ylim(0,1.01) +
+      ylab({{myylabel}}) +
+        xlab({{myxlabel}}) 
+  }
+Exp1harmony_plot = myplot(Exp1MeanHar,Population,Harmony,"Proportion harmonic responses","Condition")
+Exp1harmony_plot
+ggsave(Exp1harmony_plot,file="Exp1harmony.png", height = 5, width = 10)
+```
+
+## 1.2 Learning accuracy
+
+### 1.2.1 Noun accuracy
+
+```{r}
+Exp1NounMeanAcc=ddply(Exp1Noun,c("Population","Subject","Condition"),summarise, NounAccuracy=mean(NounAccuracy,na.rm=TRUE))
+Exp1NounMeanAcc$Population<-factor(Exp1NounMeanAcc$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1NounMeanAcc$Condition<-factor(Exp1NounMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1NounAccuracy_plot =myplot(Exp1NounMeanAcc,Population,NounAccuracy,"Noun accuracy","Condition")
+Exp1NounAccuracy_plot
+```
+
+```{r}
+Exp1NounAccuracy_VO_En<-subset(Exp1NounMeanAcc, Exp1NounMeanAcc$Condition=="VO"& Exp1NounMeanAcc$Population=="English")
+Exp1NounAccuracy_OV_En<-subset(Exp1NounMeanAcc, Exp1NounMeanAcc$Condition=="OV"& Exp1NounMeanAcc$Population=="English")
+Exp1NounAccuracy_VO_Ma<-subset(Exp1NounMeanAcc, Exp1NounMeanAcc$Condition=="VO"& Exp1NounMeanAcc$Population=="Mandarin")
+Exp1NounAccuracy_OV_Ma<-subset(Exp1NounMeanAcc, Exp1NounMeanAcc$Condition=="OV"& Exp1NounMeanAcc$Population=="Mandarin")
+mean(Exp1NounAccuracy_VO_En$NounAccuracy)
+mean(Exp1NounAccuracy_OV_En$NounAccuracy)
+mean(Exp1NounAccuracy_VO_Ma$NounAccuracy)
+mean(Exp1NounAccuracy_OV_Ma$NounAccuracy)
+```
+
+### 1.2.2 Verb accuracy
+
+```{r}
+Exp1VerbMeanAcc=ddply(Exp1Verb,c("Population","Subject","Condition"),summarise, VerbAccuracy=mean(VerbAccuracy,na.rm=TRUE))
+Exp1VerbMeanAcc$Population<-factor(Exp1VerbMeanAcc$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1VerbMeanAcc$Condition<-factor(Exp1VerbMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1VerbAccuracy_plot = myplot(Exp1VerbMeanAcc,Population,VerbAccuracy,"Verb accuracy","Condition")
+Exp1VerbAccuracy_plot
+```
+
+```{r}
+Exp1VerbAccuracy_VO_En<-subset(Exp1VerbMeanAcc, Exp1VerbMeanAcc$Condition=="VO"& Exp1VerbMeanAcc$Population=="English")
+Exp1VerbAccuracy_OV_En<-subset(Exp1VerbMeanAcc, Exp1VerbMeanAcc$Condition=="OV"& Exp1VerbMeanAcc$Population=="English")
+Exp1VerbAccuracy_VO_Ma<-subset(Exp1VerbMeanAcc, Exp1VerbMeanAcc$Condition=="VO"& Exp1VerbMeanAcc$Population=="Mandarin")
+Exp1VerbAccuracy_OV_Ma<-subset(Exp1VerbMeanAcc, Exp1VerbMeanAcc$Condition=="OV"& Exp1VerbMeanAcc$Population=="Mandarin")
+mean(Exp1VerbAccuracy_VO_En$VerbAccuracy)
+mean(Exp1VerbAccuracy_OV_En$VerbAccuracy)
+mean(Exp1VerbAccuracy_VO_Ma$VerbAccuracy)
+mean(Exp1VerbAccuracy_OV_Ma$VerbAccuracy)
+```
+
+### 1.2.3 Adposition accuracy
+
+```{r}
+Exp1AdpMeanAcc=ddply(Exp1Adp,c("Population","Subject","Condition"),summarise, AdpAccuracy=mean(AdpAccuracy,na.rm=TRUE))
+Exp1AdpMeanAcc$Population<-factor(Exp1AdpMeanAcc$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1AdpMeanAcc$Condition<-factor(Exp1AdpMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1AdpAccuracy_plot = myplot(Exp1AdpMeanAcc,Population,AdpAccuracy,"Adposition accuracy","Condition")
+Exp1AdpAccuracy_plot
+```
+
+```{r}
+Exp1AdpAccuracy_VO_En<-subset(Exp1AdpMeanAcc, Exp1AdpMeanAcc$Condition=="VO"& Exp1AdpMeanAcc$Population=="English")
+Exp1AdpAccuracy_OV_En<-subset(Exp1AdpMeanAcc, Exp1AdpMeanAcc$Condition=="OV"& Exp1AdpMeanAcc$Population=="English")
+Exp1AdpAccuracy_VO_Ma<-subset(Exp1AdpMeanAcc, Exp1AdpMeanAcc$Condition=="VO"& Exp1AdpMeanAcc$Population=="Mandarin")
+Exp1AdpAccuracy_OV_Ma<-subset(Exp1AdpMeanAcc, Exp1AdpMeanAcc$Condition=="OV"& Exp1AdpMeanAcc$Population=="Mandarin")
+mean(Exp1AdpAccuracy_VO_En$AdpAccuracy)
+mean(Exp1AdpAccuracy_OV_En$AdpAccuracy)
+mean(Exp1AdpAccuracy_VO_Ma$AdpAccuracy)
+mean(Exp1AdpAccuracy_OV_Ma$AdpAccuracy)
+```
+
+### 1.2.4 Vocabulary accuracy of verb phrase production
+
+```{r}
+Exp1VPVocabularyMeanAcc=ddply(Exp1VPVocabularyAccuracy,c("Population","Subject","Condition"),summarise, VPVocabularyAccuracy=mean(VPProductionAccuracy,na.rm=TRUE))
+Exp1VPVocabularyMeanAcc$Population<-factor(Exp1VPVocabularyMeanAcc$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1VPVocabularyMeanAcc$Condition<-factor(Exp1VPVocabularyMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1VPVocabularyAccuracy_plot = myplot(Exp1VPVocabularyMeanAcc,Population,VPVocabularyAccuracy," Vocabulary accuracy of verb phrase production","Condition")
+Exp1VPVocabularyAccuracy_plot
+```
+
+```{r}
+Exp1VPVocabularyMeanAcc_VO_En<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="VO"& Exp1VPVocabularyMeanAcc$Population=="English")
+Exp1VPVocabularyMeanAcc_OV_En<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="OV"& Exp1VPVocabularyMeanAcc$Population=="English")
+Exp1VPVocabularyMeanAcc_VO_Ma<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="VO"& Exp1VPVocabularyMeanAcc$Population=="Mandarin")
+Exp1VPVocabularyMeanAcc_OV_Ma<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="OV"& Exp1VPVocabularyMeanAcc$Population=="Mandarin")
+Exp1VPVocabularyMeanAcc_VO<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="VO")
+Exp1VPVocabularyMeanAcc_OV<-subset(Exp1VPVocabularyMeanAcc, Exp1VPVocabularyMeanAcc$Condition=="OV")
+mean(Exp1VPVocabularyMeanAcc_VO_En$VPVocabularyAccuracy)
+mean(Exp1VPVocabularyMeanAcc_OV_En$VPVocabularyAccuracy)
+mean(Exp1VPVocabularyMeanAcc_VO_Ma$VPVocabularyAccuracy)
+mean(Exp1VPVocabularyMeanAcc_OV_Ma$VPVocabularyAccuracy)
+```
+
+### 1.2.5 Word order accuracy of verb phrase production
+
+```{r}
+Exp1VPMeanOrder=ddply(Exp1VPOrder,c("Population","Subject","Condition"),summarise, VPOrderAccuracy=mean(VPOrderAccuracy,na.rm=TRUE))
+Exp1VPMeanOrder$Population<-factor(Exp1VPMeanOrder$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1VPMeanOrder$Condition<-factor(Exp1VPMeanOrder$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1VPOrderAccuracy_plot = myplot(Exp1VPMeanOrder,Population,VPOrderAccuracy,"Word order accuracy of verb phrase production","Condition")
+Exp1VPOrderAccuracy_plot
+```
+
+```{r}
+Exp1VPMeanOrder_VO<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="VO")
+Exp1VPMeanOrder_OV<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="OV")
+Exp1VPMeanOrder_VO_En<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="VO"& Exp1VPMeanOrder$Population=="English")
+Exp1VPMeanOrder_OV_En<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="OV"& Exp1VPMeanOrder$Population=="English")
+Exp1VPMeanOrder_VO_Ma<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="VO"& Exp1VPMeanOrder$Population=="Mandarin")
+Exp1VPMeanOrder_OV_Ma<-subset(Exp1VPMeanOrder, Exp1VPMeanOrder$Condition=="OV"& Exp1VPMeanOrder$Population=="Mandarin")
+mean(Exp1VPMeanOrder_VO$VPOrderAccuracy)
+mean(Exp1VPMeanOrder_OV$VPOrderAccuracy)
+mean(Exp1VPMeanOrder_VO_En$VPOrderAccuracy)
+mean(Exp1VPMeanOrder_OV_En$VPOrderAccuracy)
+mean(Exp1VPMeanOrder_VO_Ma$VPOrderAccuracy)
+mean(Exp1VPMeanOrder_OV_Ma$VPOrderAccuracy)
+```
+
+### 1.2.6 Accuracy of verb phrase matching
+
+```{r}
+Exp1VPMatchingMeanAcc=ddply(Exp1VPMatching,c("Population","Subject","Condition"),summarise, MatchingAccuracy=mean(VPMatchingAccuracy,na.rm=TRUE))
+Exp1VPMatchingMeanAcc$Population<-factor(Exp1VPMatchingMeanAcc$Population,levels=c("English","Mandarin"),labels=c("English","Mandarin"))
+Exp1VPMatchingMeanAcc$Condition<-factor(Exp1VPMatchingMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp1VPMatchingAccuracy_plot = myplot(Exp1VPMatchingMeanAcc,Population,MatchingAccuracy,"Accuracy of verb phrase matching","Condition")
+Exp1VPMatchingAccuracy_plot
+```
+
+```{r}
+Exp1VPMatchingAccuracy_VO_En<-subset(Exp1VPMatchingMeanAcc, Exp1VPMatchingMeanAcc$Condition=="VO"& Exp1VPMatchingMeanAcc$Population=="English")
+Exp1VPMatchingAccuracy_OV_En<-subset(Exp1VPMatchingMeanAcc, Exp1VPMatchingMeanAcc$Condition=="OV"& Exp1VPMatchingMeanAcc$Population=="English")
+Exp1VPMatchingAccuracy_VO_Ma<-subset(Exp1VPMatchingMeanAcc, Exp1VPMatchingMeanAcc$Condition=="VO"& Exp1VPMatchingMeanAcc$Population=="Mandarin")
+Exp1VPMatchingAccuracy_OV_Ma<-subset(Exp1VPMatchingMeanAcc, Exp1VPMatchingMeanAcc$Condition=="OV"& Exp1VPMatchingMeanAcc$Population=="Mandarin")
+mean(Exp1VPMatchingAccuracy_VO_En$MatchingAccuracy)
+mean(Exp1VPMatchingAccuracy_OV_En$MatchingAccuracy)
+mean(Exp1VPMatchingAccuracy_VO_Ma$MatchingAccuracy)
+mean(Exp1VPMatchingAccuracy_OV_Ma$MatchingAccuracy)
+```
+
+# 2. Main analysis
+
+## 2.1 The model
+
+```{r}
+Exp1PPHarmony$Condition<-contr_code_sum(Exp1PPHarmony$Condition, omit = "VO")
+Exp1PPHarmony$Population<-contr_code_sum(Exp1PPHarmony$Population, omit = "English")
+fit_e1 <- brm(PPHarmony ~ Population*Condition + (1|Subject)+(1|PPItem), control = list(adapt_delta = 0.99,max_treedepth=12),
+                data = Exp1PPHarmony,iter=3500,cores=4,
+                family = bernoulli(link="logit")) 
+summary(fit_e1)
+```
+
+## 2.2 Estimates of mean and 95% CIs of the four cells (in log-odds)
+
+```{r}
+samples_e1 <- posterior_samples(fit_e1, pars = "^b_") %>% mutate(
+  en_convo = b_Intercept - b_Population.MandarinMintercept - b_Condition.OVMintercept  + `b_Population.MandarinMintercept:Condition.OVMintercept`,
+  en_conov = b_Intercept - b_Population.MandarinMintercept + b_Condition.OVMintercept - `b_Population.MandarinMintercept:Condition.OVMintercept`,
+  ma_convo = b_Intercept + b_Population.MandarinMintercept - b_Condition.OVMintercept- `b_Population.MandarinMintercept:Condition.OVMintercept`, 
+  ma_conov = b_Intercept + b_Population.MandarinMintercept + b_Condition.OVMintercept + `b_Population.MandarinMintercept:Condition.OVMintercept`)
+pp_en_vo<-c(mean(samples_e1$en_convo), quantile(samples_e1$en_convo,0.025),quantile(samples_e1$en_convo,0.975))
+pp_en_ov<-c(mean(samples_e1$en_conov),quantile(samples_e1$en_conov,0.025),quantile(samples_e1$en_conov,0.975))
+pp_ma_vo<-c(mean(samples_e1$ma_convo),quantile(samples_e1$ma_convo,0.025),quantile(samples_e1$ma_convo,0.975))
+pp_ma_ov<-c(mean(samples_e1$ma_conov),quantile(samples_e1$ma_conov,0.025),quantile(samples_e1$ma_conov,0.975))
+# PP_English_VO
+pp_en_vo
+#PP_English_OV
+pp_en_ov
+#PP_Mandarin_VO
+pp_ma_vo
+#PP_Mandarin_OV
+pp_ma_ov
+```
+
+# 3. Secondary analysis
+
+## 3.1 Learning accuracy
+
+### 3.1.1 Noun accuracy
+
+```{r}
+Exp1Noun$Condition<-contr_code_sum(Exp1Noun$Condition, omit = "VO")
+Exp1Noun$Population<-contr_code_sum(Exp1Noun$Population, omit = "English")
+fite1_noun <- brm(NounAccuracy~Condition*Population+(1|Subject)+(1|NounItem),
+                data = Exp1Noun,
+              control = list(adapt_delta = 0.999,max_treedepth=11),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_noun)
+```
+
+### 3.1.2 Verb accuracy
+
+```{r}
+Exp1Verb$Condition<-contr_code_sum(Exp1Verb$Condition, omit = "VO")
+Exp1Verb$Population<-contr_code_sum(Exp1Verb$Population, omit = "English")
+fite1_verb <- brm(VerbAccuracy~Condition*Population+(1|Subject)+(1|VerbItem),
+                data = Exp1Verb,
+              control = list(adapt_delta = 0.999),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_verb)
+```
+
+### 3.1.3 Adposition accuracy
+
+```{r}
+Exp1Adp$Condition<-contr_code_sum(Exp1Adp$Condition, omit = "VO")
+Exp1Adp$Population<-contr_code_sum(Exp1Adp$Population, omit = "English")
+fite1_adp <- brm(AdpAccuracy~Condition*Population+(1|Subject)+(1|AdpItem),
+                data = Exp1Adp,
+              control = list(adapt_delta = 0.99),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_adp)
+```
+
+### 3.1.4 Vocabulary accuracy of verb phrase production
+
+```{r}
+Exp1VPVocabularyAccuracy$Condition<-contr_code_sum(Exp1VPVocabularyAccuracy$Condition, omit = "VO")
+Exp1VPVocabularyAccuracy$Population<-contr_code_sum(Exp1VPVocabularyAccuracy$Population, omit = "English")
+fite1_vpvocabulary <- brm(VPProductionAccuracy~Condition*Population+(1|Subject)+(1|VPProductionItem),
+                data = Exp1VPVocabularyAccuracy,
+              control = list(adapt_delta = 0.99),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_vpvocabulary)
+```
+
+### 3.1.5 Word order accuracy of verb phrase production
+
+```{r}
+Exp1VPOrder$Condition<-contr_code_sum(Exp1VPOrder$Condition, omit = "VO")
+Exp1VPOrder$Population<-contr_code_sum(Exp1VPOrder$Population, omit = "English")
+fite1_vporder <- brm(VPOrderAccuracy~Condition*Population+(1|Subject)+(1|VPProductionItem),
+                data = Exp1VPOrder,
+              control = list(adapt_delta = 0.99),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_vporder)
+```
+
+### 3.1.6 Accuracy of verb phrase matching
+
+```{r}
+Exp1VPMatching$Condition<-contr_code_sum(Exp1VPMatching$Condition, omit = "VO")
+Exp1VPMatching$Population<-contr_code_sum(Exp1VPMatching$Population, omit = "English")
+fite1_vpmatching <- brm(VPMatchingAccuracy~Condition*Population+(1|Subject)+(1|VPMatchingItem),
+                data = Exp1VPMatching,
+              control = list(adapt_delta = 0.99999),iter=3000, cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite1_vpmatching)
+```
+
+## 3.2 Second language experience
+
+### 3.2.1 English speakers
+
+```{r}
+Exp1LanExp_En$Condition<-contr_code_sum(Exp1LanExp_En$Condition, omit = "VO")
+Exp1LanExp_En$LanExp<-contr_code_sum(Exp1LanExp_En$LanExp, omit = "OV&NPost")
+fit_e1lanexp_en<- brm(PPHarmony~Condition*LanExp+(1|Subject)+(1|PPItem),prior = c(prior(normal(0, 10), class = Intercept),
+  prior(normal(0, 3), class = b),
+  prior(cauchy(0, 1), class = sd)),
+                data = Exp1LanExp_En,cores=2,
+                family = bernoulli(link="logit"),control = list(adapt_delta = 0.9999999)) 
+summary(fit_e1lanexp_en)
+```
+
+### 3.2.2 Mandarin speakers
+
+```{r}
+Exp1LanExp_Ma$Condition<-contr_code_sum(Exp1LanExp_Ma$Condition, omit = "VO")
+Exp1LanExp_Ma$LanExp<-contr_code_sum(Exp1LanExp_Ma$LanExp, omit = "8")
+fit_e1lanexp_ma<- brm(PPHarmony~Condition*LanExp+(1|Subject)+(1|PPItem),prior = c(prior(normal(0, 10), class = Intercept),
+  prior(normal(0, 3), class = b),
+  prior(cauchy(0, 1), class = sd)),
+                data = Exp1LanExp_Ma,cores=4,
+                family = bernoulli(link="logit"),control = list(adapt_delta = 0.999,max_treedepth = 12)) 
+summary(fit_e1lanexp_ma)
+```
+

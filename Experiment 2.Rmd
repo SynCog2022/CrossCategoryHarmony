@@ -1,0 +1,309 @@
+---
+title: "Experiment 2"
+output: html_notebook
+---
+# Download the packages
+```{r}
+library(ggplot2)
+library(plyr)
+library(tidyverse)
+library(tidybayes)
+library(reshape2) 
+library(rlang)
+library(readxl)
+library(Hmisc)
+library(brms)
+library(tidyr)
+library(readxl)
+library(faux)
+```
+# Set the working directory
+Setting the working directory
+```{r}
+setwd("/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony")
+```
+# Data
+```{r}
+Exp2PPNP = read_excel('/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony/Exp2PPNP.xlsx')
+Exp2VP = read_excel('/Users/s1831038/OneDrive - University of Edinburgh/CrossCategoryHarmony/Exp2VP.xlsx')
+Exp2PPNPHarmony<-subset(Exp2PPNP,select=c("Subject","Condition","PhraseHarmony","PhraseItem","PhraseType"))
+Exp2PPNPHarmony<-na.omit(Exp2PPNPHarmony)
+Exp2Noun<-subset(Exp2VP,select=c("Subject","Condition","NounItem","NounAccuracy","PhraseType"))
+Exp2Verb<-subset(Exp2VP,select=c("Subject","Condition","VerbItem","VerbAccuracy","PhraseType"))
+Exp2VPVocabularyAccuracy<-subset(Exp2VP,select=c("Subject","Condition","VPProductionItem","VPProductionAccuracy","PhraseType"))
+Exp2VPOrder<-subset(Exp2VP,select=c("Subject","Condition","VPProductionItem","VPOrderAccuracy","PhraseType"))
+Exp2VPMatching<-subset(Exp2VP,select=c("Subject","Condition","VPMatchingItem","VPMatchingAccuracy","PhraseType"))
+Exp2AdpAdj<-subset(Exp2VP,select=c("Subject","Condition","AdpAdjItem","AdpAdjAccuracy","PhraseType"))
+Exp2LanExp<-subset(Exp2PPNP,select=c("Subject","Condition","PhraseHarmony","PhraseItem","PhraseType","LanExp"))
+Exp2LanExp<-subset(Exp2LanExp, PhraseType=="NP" )
+Exp2LanExp<-na.omit(Exp2LanExp)
+```
+
+# 1. Plotting
+## 1.1 Proportion harmonic responses
+```{r}
+Exp2MeanHar=ddply(Exp2PPNPHarmony,c("PhraseType","Subject","Condition"),summarise, Harmony=mean(PhraseHarmony,na.rm=TRUE))
+Exp2MeanHar$PhraseType<-factor(Exp2MeanHar$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2MeanHar$Condition<-factor(Exp2MeanHar$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+myplot<-function(mydata,x,y,myylabel,myxlabel){
+  ggplot(mydata, aes(x={{x}}, y={{y}}, fill={{x}})) + 
+      geom_dotplot(binaxis = "y", stackdir = "center", position = "dodge", 
+                   stackratio = 1, binwidth = 0.004, dotsize=7
+                   ) +
+      stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width=.1, size=0.6) +
+      stat_summary(fun = mean, geom = "point", size=3) +
+      facet_grid(.~Condition, scale="free_x", space="free") +
+      scale_fill_manual(values=c("red3", "blue")) +     
+      theme(legend.position="none") +
+      theme(axis.title.x = element_text(vjust = 0),axis.title.y = element_text(vjust = 0.8)) +
+        theme(axis.title.x = element_text(size=18),axis.text.x = element_text(size=16), 
+              axis.title.y = element_text(size=18), axis.text.y=element_text(size=16), strip.text.x = element_text(size = 16)) +
+      geom_hline(aes(yintercept=.5),linetype="dashed")+  
+    ylim(0,1.01) +
+      ylab({{myylabel}}) +
+        xlab({{myxlabel}}) 
+  
+  }
+Exp2harmony = myplot(Exp2MeanHar,PhraseType,Harmony,"Proportion harmonic responses","Condition")
+Exp2harmony
+ggsave(Exp2harmony,file="Exp2harmony.png", height = 5, width = 10)
+```
+## 1.2 Learning accuracy
+### 1.2.1 Noun accuracy
+```{r}
+Exp2NounMeanAcc=ddply(Exp2Noun,c("PhraseType","Subject","Condition"),summarise, NounAccuracy=mean(NounAccuracy,na.rm=TRUE))
+Exp2NounMeanAcc$PhraseType<-factor(Exp2NounMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2NounMeanAcc$Condition<-factor(Exp2NounMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2NounAccuracy_plot = myplot(Exp2NounMeanAcc,PhraseType,NounAccuracy,"Noun accuracy","Condition")
+Exp2NounAccuracy_plot
+```
+
+```{r}
+Exp2Noun_VO_pp<-subset(Exp2NounMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2Noun_OV_pp<-subset(Exp2NounMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2Noun_VO_np<-subset(Exp2NounMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2Noun_OV_np<-subset(Exp2NounMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2Noun_VO_pp$NounAccuracy)
+mean(Exp2Noun_OV_pp$NounAccuracy)
+mean(Exp2Noun_VO_np$NounAccuracy)
+mean(Exp2Noun_OV_np$NounAccuracy)
+
+```
+### 1.2.2 Verb accuracy
+```{r}
+Exp2VerbMeanAcc=ddply(Exp2Verb,c("PhraseType","Subject","Condition"),summarise, VerbAccuracy=mean(VerbAccuracy,na.rm=TRUE))
+Exp2VerbMeanAcc$PhraseType<-factor(Exp2VerbMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2VerbMeanAcc$Condition<-factor(Exp2VerbMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2VerbAccuracy_plot = myplot(Exp2VerbMeanAcc,PhraseType,VerbAccuracy,"Verb accuracy","Condition")
+Exp2VerbAccuracy_plot
+```
+
+```{r}
+Exp2Verb_VO_pp<-subset(Exp2VerbMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2Verb_OV_pp<-subset(Exp2VerbMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2Verb_VO_np<-subset(Exp2VerbMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2Verb_OV_np<-subset(Exp2VerbMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2Verb_VO_pp$VerbAccuracy)
+mean(Exp2Verb_OV_pp$VerbAccuracy)
+mean(Exp2Verb_VO_np$VerbAccuracy)
+mean(Exp2Verb_OV_np$VerbAccuracy)
+```
+### 1.2.3 Adjective accuracy
+```{r}
+Exp2AdpAdjMeanAcc=ddply(Exp2AdpAdj,c("PhraseType","Subject","Condition"),summarise, AdpAdjAccuracy=mean(AdpAdjAccuracy,na.rm=TRUE))
+Exp2AdpAdjMeanAcc$PhraseType<-factor(Exp2AdpAdjMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2AdpAdjMeanAcc$Condition<-factor(Exp2AdpAdjMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2AdpAdjAccuracy_plot = myplot(Exp2AdpAdjMeanAcc,PhraseType,AdpAdjAccuracy,"Adjective accuracy","Condition")
+Exp2AdpAdjAccuracy_plot
+```
+
+```{r}
+Exp2Adp_VO_pp<-subset(Exp2AdpAdjMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2Adp_OV_pp<-subset(Exp2AdpAdjMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2Adj_VO_np<-subset(Exp2AdpAdjMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2Adj_OV_np<-subset(Exp2AdpAdjMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2Adp_VO_pp$AdpAdjAccuracy)
+mean(Exp2Adp_OV_pp$AdpAdjAccuracy)
+mean(Exp2Adj_VO_np$AdpAdjAccuracy)
+mean(Exp2Adj_OV_np$AdpAdjAccuracy)
+```
+### 1.2.4 Vocabulary accuracy of verb phrase production
+```{r}
+Exp2VPVocabularyMeanAcc=ddply(Exp2VPVocabularyAccuracy,c("PhraseType","Subject","Condition"),summarise, VPVocabularyAccuracy=mean(VPProductionAccuracy,na.rm=TRUE))
+Exp2VPVocabularyMeanAcc$PhraseType<-factor(Exp2VPVocabularyMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2VPVocabularyMeanAcc$Condition<-factor(Exp2VPVocabularyMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2VPVocabularyAccuracy_plot = myplot(Exp2VPVocabularyMeanAcc,PhraseType,VPVocabularyAccuracy,"Vocabulary accuracy of verb phrase production","Condition")
+Exp2VPVocabularyAccuracy_plot
+```
+
+```{r}
+Exp2VPVocabulary_VO_pp<-subset(Exp2VPVocabularyMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2VPVocabulary_OV_pp<-subset(Exp2VPVocabularyMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2VPVocabulary_VO_np<-subset(Exp2VPVocabularyMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2VPVocabulary_OV_np<-subset(Exp2VPVocabularyMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2VPVocabulary_VO_pp$VPVocabularyAccuracy)
+mean(Exp2VPVocabulary_OV_pp$VPVocabularyAccuracy)
+mean(Exp2VPVocabulary_VO_np$VPVocabularyAccuracy)
+mean(Exp2VPVocabulary_OV_np$VPVocabularyAccuracy)
+```
+### 1.2.5 Word order accuracy of verb phrase production
+```{r}
+Exp2OrderMeanAcc=ddply(Exp2VPOrder,c("PhraseType","Subject","Condition"),summarise, VPOrderAccuracy=mean(VPOrderAccuracy,na.rm=TRUE))
+Exp2OrderMeanAcc$PhraseType<-factor(Exp2OrderMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2OrderMeanAcc$Condition<-factor(Exp2OrderMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2VPOrderAccuracy_plot = myplot(Exp2OrderMeanAcc,PhraseType,VPOrderAccuracy,"Word order accuracy of verb phrase production","Condition")
+Exp2VPOrderAccuracy_plot
+```
+```{r}
+Exp2VPOrderAccuracy_VO<-subset(Exp2OrderMeanAcc,Condition =="VO")
+Exp2VPOrderAccuracy_OV<-subset(Exp2OrderMeanAcc,Condition =="OV")
+Exp2VPOrderAccuracy_VO_pp<-subset(Exp2OrderMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2VPOrderAccuracy_OV_pp<-subset(Exp2OrderMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2VPOrderAccuracy_VO_np<-subset(Exp2OrderMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2VPOrderAccuracy_OV_np<-subset(Exp2OrderMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2VPOrderAccuracy_VO$VPOrderAccuracy)
+mean(Exp2VPOrderAccuracy_OV$VPOrderAccuracy)
+mean(Exp2VPOrderAccuracy_VO_pp$VPOrderAccuracy)
+mean(Exp2VPOrderAccuracy_OV_pp$VPOrderAccuracy)
+mean(Exp2VPOrderAccuracy_VO_np$VPOrderAccuracy)
+mean(Exp2VPOrderAccuracy_OV_np$VPOrderAccuracy)
+```
+
+### 1.2.6 Accuracy of verb phrase matching
+```{r}
+Exp2VPMatchingMeanAcc=ddply(Exp2VPMatching,c("PhraseType","Subject","Condition"),summarise, VPMatchingAccuracy=mean(VPMatchingAccuracy,na.rm=TRUE))
+Exp2VPMatchingMeanAcc$PhraseType<-factor(Exp2VPMatchingMeanAcc$PhraseType,levels=c("PP","NP"),labels=c("PP","NP"))
+Exp2VPMatchingMeanAcc$Condition<-factor(Exp2VPMatchingMeanAcc$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+Exp2VPMatchingAccuracy_plot = myplot(Exp2VPMatchingMeanAcc,PhraseType,VPMatchingAccuracy,"Accuracy of verb phrase matching","Condition")
+Exp2VPMatchingAccuracy_plot
+```
+
+```{r}
+Exp2VPMatching_VO_pp<-subset(Exp2VPMatchingMeanAcc,Condition =="VO"&PhraseType =="PP")
+Exp2VPMatching_OV_pp<-subset(Exp2VPMatchingMeanAcc,Condition =="OV"&PhraseType =="PP")
+Exp2VPMatching_VO_np<-subset(Exp2VPMatchingMeanAcc,Condition =="VO"&PhraseType =="NP")
+Exp2VPMatching_OV_np<-subset(Exp2VPMatchingMeanAcc,Condition =="OV"&PhraseType =="NP")
+mean(Exp2VPMatching_VO_pp$VPMatchingAccuracy)
+mean(Exp2VPMatching_OV_pp$VPMatchingAccuracy)
+mean(Exp2VPMatching_VO_np$VPMatchingAccuracy)
+mean(Exp2VPMatching_OV_np$VPMatchingAccuracy)
+```
+
+# 2. Main analysis
+### 2.1 The model
+```{r}
+Exp2PPNPHarmony$Condition<-contr_code_sum(Exp2PPNPHarmony$Condition, omit = "VO")
+Exp2PPNPHarmony$PhraseType<-contr_code_sum(Exp2PPNPHarmony$PhraseType, omit = "PP")
+fit_e2 <- brm(PhraseHarmony ~ Condition*PhraseType + (1|Subject)+(1|PhraseItem), 
+                data = Exp2PPNPHarmony,
+            control = list(adapt_delta = 0.99,max_treedepth=15),iter=3000,cores=4,
+                family = bernoulli(link="logit")) 
+summary(fit_e2)
+```
+
+## 2.2 Estimates of mean and 95% CIs of the four cells (in log-odds)
+```{r}
+samples_e2 <- posterior_samples(fit_e2, pars = "^b_") %>% mutate(
+np_convo = b_Intercept + b_PhraseType.NPMintercept -b_Condition.OVMintercept - `b_Condition.OVMintercept:PhraseType.NPMintercept`, 
+np_conov = b_Intercept + b_PhraseType.NPMintercept + b_Condition.OVMintercept + `b_Condition.OVMintercept:PhraseType.NPMintercept`)
+np_vo<-c(mean(samples_e2$np_convo),quantile(samples_e2$np_convo,0.025),quantile(samples_e2$np_convo,0.975))
+np_ov<-c(mean(samples_e2$np_conov),quantile(samples_e2$np_conov,0.025),quantile(samples_e2$np_conov,0.975))
+np_vo
+np_ov
+```
+
+
+# 3. Secondary analysis
+## 3.1 Learning accuracy
+### 3.1.1 Noun accuracy
+```{r}
+Exp2Noun$Condition<-contr_code_sum(Exp2Noun$Condition, omit = "VO")
+Exp2Noun$PhraseType<-contr_code_sum(Exp2Noun$PhraseType, omit = "PP")
+fite2_noun <- brm(NounAccuracy~Condition*PhraseType+(1|Subject)+(1|NounItem),
+                data = Exp2Noun,
+              control = list(adapt_delta = 0.9999),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_noun)
+```
+### 3.1.2 Verb accuracy
+```{r}
+Exp2Verb$Condition<-contr_code_sum(Exp2Verb$Condition, omit = "VO")
+Exp2Verb$PhraseType<-contr_code_sum(Exp2Verb$PhraseType, omit = "PP")
+fite2_verb <- brm(VerbAccuracy~Condition*PhraseType+(1|Subject)+(1|VerbItem),
+                data = Exp2Verb,
+              control = list(adapt_delta = 0.999),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_verb)
+```
+### 3.1.3 Adposition/Adjective accuracy
+```{r}
+Exp2AdpAdj$Condition<-contr_code_sum(Exp2AdpAdj$Condition, omit = "VO")
+Exp2AdpAdj$PhraseType<-contr_code_sum(Exp2AdpAdj$PhraseType, omit = "PP")
+fite2_adpadj <- brm(AdpAdjAccuracy~Condition*PhraseType+(1|Subject)+(1|AdpAdjItem),
+                data = Exp2AdpAdj,
+              control = list(adapt_delta = 0.999),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_adpadj)
+```
+### 3.1.4 Vocabulary accuracy of verb phrase production
+```{r}
+Exp2VPVocabularyAccuracy$Condition<-contr_code_sum(Exp2VPVocabularyAccuracy$Condition, omit = "VO")
+Exp2VPVocabularyAccuracy$PhraseType<-contr_code_sum(Exp2VPVocabularyAccuracy$PhraseType, omit = "PP")
+fite2_vpvocabulary <- brm(VPProductionAccuracy~Condition*PhraseType+(1|Subject)+(1|VPProductionItem),
+                data = Exp2VPVocabularyAccuracy,
+              control = list(adapt_delta = 0.999),iter=3000,cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_vpvocabulary)
+```
+
+### 3.1.5 Word order accuracy of verb phrase production
+```{r}
+Exp2VPOrder$Condition<-contr_code_sum(Exp2VPOrder$Condition, omit = "VO")
+Exp2VPOrder$PhraseType<-contr_code_sum(Exp2VPOrder$PhraseType, omit = "PP")
+fite2_vporder <- brm(VPOrderAccuracy~Condition*PhraseType+(1|Subject)+(1|VPProductionItem),
+                data = Exp2VPOrder,
+              control = list(adapt_delta = 0.9999),cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_vporder)
+```
+### 3.1.6 Accuracy of verb phrase matching
+```{r}
+Exp2VPMatching$Condition<-contr_code_sum(Exp2VPMatching$Condition, omit = "VO")
+Exp2VPMatching$PhraseType<-contr_code_sum(Exp2VPMatching$PhraseType, omit = "PP")
+fite2_vpmatch <- brm(VPMatchingAccuracy~Condition*PhraseType+(1|Subject)+(1|VPMatchingItem),
+                data = Exp2VPMatching,
+              control = list(adapt_delta = 0.999),iter=3000,cores=4,
+                family = bernoulli(link="logit")) 
+summary(fite2_vpmatch)
+```
+## 3.2 Second language experience
+```{r}
+Exp2MeanHarLanExp=ddply(Exp2LanExp,c("LanExp","Subject","Condition"),summarise, Harmony=mean(PhraseHarmony,na.rm=TRUE))
+Exp2MeanHarLanExp$LanExp<-factor(Exp2MeanHarLanExp$LanExp,levels=c("VO&NAdj","OV&AdjN","No dominant&AdjN"),labels=c("VO&NAdj","OV&AdjN","No dominant order\n  in VP&AdjN"))
+Exp2MeanHarLanExp$Condition<-factor(Exp2MeanHarLanExp$Condition,levels=c("VO","OV"),labels=c("VO","OV"))
+myplot2<-function(mydata,x,y,myylabel,myxlabel){
+  ggplot(mydata, aes(x={{x}}, y={{y}}, fill={{x}})) + 
+      geom_dotplot(binaxis = "y", stackdir = "center", position = "dodge", 
+                   stackratio = 1, binwidth = 0.004, dotsize=7
+                   )  +
+      facet_grid(.~Condition, scale="free_x", space="free") +stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width=.1, size=0.6) +
+      stat_summary(fun = mean, geom = "point", size=3) +
+    scale_fill_manual(values=c("darkgoldenrod","lightskyblue4","rosybrown")) +
+      theme(legend.position="none") +
+      theme(axis.title.x = element_text(vjust = 0),axis.title.y = element_text(vjust = 0.8)) +
+        theme(axis.title.x = element_text(size=16),axis.text.x = element_text(size=12), 
+              axis.title.y = element_text(size=16), axis.text.y=element_text(size=12), strip.text.x = element_text(size = 16)) +
+      geom_hline(aes(yintercept=.5),linetype="dashed")+  
+    ylim(0,1.01) +
+      ylab({{myylabel}}) +
+        xlab({{myxlabel}}) 
+  
+  }
+Exp2lanexp = myplot2(Exp2MeanHarLanExp,LanExp,Harmony,"Proportion harmonic responses","Second language experience")
+Exp2lanexp
+ggsave(Exp2lanexp,file="Exp2lanexp.png", height = 5, width = 12)
+```
+
+
+
+
